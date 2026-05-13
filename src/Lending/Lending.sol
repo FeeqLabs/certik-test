@@ -7,7 +7,6 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {IERC20Metadata} from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {Pausable} from "@openzeppelin/contracts/utils/Pausable.sol";
-import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 
@@ -48,7 +47,7 @@ import {LendingMath} from "./LendingMath.sol";
 ///   Pause matrix: `supply`, `borrow`, `liquidate` blocked while paused. `withdraw`, `repay`, `accrueInterest` always
 ///     available. `setBorrowEnabled(false)` / `setCollateralEnabled(false)` disable NEW actions only — liquidation of
 ///     existing positions still proceeds regardless of the toggle.
-contract Lending is ILendingPool, Ownable2Step, ReentrancyGuard, Pausable {
+contract Lending is ILendingPool, Ownable2Step, Pausable {
     using SafeCast for uint256;
     using SafeERC20 for IERC20;
 
@@ -99,7 +98,7 @@ contract Lending is ILendingPool, Ownable2Step, ReentrancyGuard, Pausable {
     uint private constant NOT_ENTERED = 2;
     uint public status = 2;
 
-    modifier nonReentrant() override {
+    modifier nonReentrant(){
         require(status != ENTERED, "ReentrancyGuard: reentrant call");
         status = ENTERED;
 
