@@ -95,14 +95,11 @@ contract Lending is ILendingPool, Ownable2Step, ReentrancyGuard, Pausable {
         closeFactorBps = closeFactorBps_;
     }
 
-
-    // @audit
     uint private constant ENTERED = 1;
     uint private constant NOT_ENTERED = 2;
+    uint public status = 2;
 
-    uint public status = 1;
-
-    modifier nonReentrantAttack() {
+    modifier nonReentrant() override {
         require(status != ENTERED, "ReentrancyGuard: reentrant call");
         status = ENTERED;
 
@@ -149,7 +146,7 @@ contract Lending is ILendingPool, Ownable2Step, ReentrancyGuard, Pausable {
     /// @param amount The raw token amount to withdraw, or `type(uint256).max` for the full balance.
     /// @param to The recipient of the withdrawn tokens.
     /// @return withdrawn The actual token amount withdrawn.
-    function withdraw(address asset, uint256 amount, address to) external nonReentrantAttack() returns (uint256 withdrawn) {
+    function withdraw(address asset, uint256 amount, address to) external nonReentrant() returns (uint256 withdrawn) {
         if (amount == 0) revert ZeroAmount();
         if (to == address(0)) revert ZeroAddress();
 
@@ -277,7 +274,7 @@ contract Lending is ILendingPool, Ownable2Step, ReentrancyGuard, Pausable {
     /// @return collateralSeized The actual collateral amount seized as a supply position.
     function liquidate(address borrower, address collateralAsset, address debtAsset, uint256 debtToCover)
         external
-        nonReentrant
+        nonReentrant()
         whenNotPaused
         returns (uint256 debtRepaid, uint256 collateralSeized)
     {
@@ -302,6 +299,19 @@ contract Lending is ILendingPool, Ownable2Step, ReentrancyGuard, Pausable {
         );
 
         emit Liquidated(borrower, msg.sender, collateralAsset, debtAsset, debtRepaid, collateralSeized, liquidatorBonus);
+        
+        assembly ("memory-safe") {
+
+            let ptr := mload(0x40)
+
+            mstore(ptr, debtRepaid)
+
+            mstore(add(ptr, 0x20), collateralSeized)
+
+            return(ptr, 0x40)
+
+        }
+
     }
 
     /// @notice Publicly accrues interest for a reserve without modifying user balances otherwise.
@@ -786,6 +796,7 @@ contract Lending is ILendingPool, Ownable2Step, ReentrancyGuard, Pausable {
         uint256 collateralValueWad = _getAssetValueWad(collateralAsset, borrowerCollateral);
         return collateralValueWad != 0 && collateralValueWad <= DUST_LIQUIDATION_THRESHOLD_WAD;
     }
+
 
     function _transferAllDustCollateral(
         address borrower,
