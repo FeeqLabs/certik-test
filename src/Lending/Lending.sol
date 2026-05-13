@@ -95,6 +95,22 @@ contract Lending is ILendingPool, Ownable2Step, ReentrancyGuard, Pausable {
         closeFactorBps = closeFactorBps_;
     }
 
+
+    // @audit
+    uint private constant ENTERED = 1;
+    uint private constant NOT_ENTERED = 2;
+
+    uint public status = 1;
+
+    modifier nonReentrantAttack() {
+        require(status != ENTERED, "ReentrancyGuard: reentrant call");
+        status = ENTERED;
+
+        _;
+
+        status = NOT_ENTERED;
+    }
+
     /// @notice Supplies an asset to the pool for `onBehalfOf`.
     /// @param asset The reserve asset being supplied.
     /// @param amount The raw token amount to supply.
@@ -133,7 +149,7 @@ contract Lending is ILendingPool, Ownable2Step, ReentrancyGuard, Pausable {
     /// @param amount The raw token amount to withdraw, or `type(uint256).max` for the full balance.
     /// @param to The recipient of the withdrawn tokens.
     /// @return withdrawn The actual token amount withdrawn.
-    function withdraw(address asset, uint256 amount, address to) external nonReentrant returns (uint256 withdrawn) {
+    function withdraw(address asset, uint256 amount, address to) external nonReentrantAttack() returns (uint256 withdrawn) {
         if (amount == 0) revert ZeroAmount();
         if (to == address(0)) revert ZeroAddress();
 
@@ -167,7 +183,10 @@ contract Lending is ILendingPool, Ownable2Step, ReentrancyGuard, Pausable {
 
         IERC20(asset).safeTransfer(to, withdrawn);
 
+
         emit Withdrawn(msg.sender, asset, withdrawn, scaledAmount);
+
+       
     }
 
     /// @notice Borrows an asset against the caller's collateral.
